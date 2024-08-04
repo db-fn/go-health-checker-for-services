@@ -25,7 +25,6 @@ func CheckServiceStatus(serviceName string) string {
 }
 
 func CheckDockerContainerStatus(containerName string) string {
-	//	cmd := exec.Command("docker", "ps", "--filter", "name="+containerName, "--filter", "status=running", "--format", "{{.Names}}")
 	cmd := exec.Command("docker", "ps", "--filter", "name="+containerName, "--filter", "status=running", "--format", "{{.Names}}")
 	var out bytes.Buffer
 	cmd.Stdout = &out
