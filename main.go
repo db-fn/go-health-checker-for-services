@@ -1,10 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"github.com/gin-gonic/gin"
-
 	"bytes"
+	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -16,10 +15,11 @@ func CheckServiceStatus(serviceName string) string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
+		log.Printf("Error checking service status for %s: %v", serviceName, err)
 		return "error"
 	}
 	status := strings.TrimSpace(out.String())
-	fmt.Println("serviceName: ", serviceName, "\nstatus: ", status)
+	log.Printf("Service %s, Status: %s", serviceName, status)
 	if status == "active" {
 		return "ok"
 	}
@@ -32,11 +32,11 @@ func CheckDockerContainerStatus(containerName string) string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
+		log.Printf("Error checking container status for %s: %v", containerName, err)
 		return "error"
 	}
 	output := strings.TrimSpace(out.String())
-	fmt.Println("output: ", output)
-	fmt.Println("containerName: ", containerName)
+	log.Printf("Container %s, Status: %s", containerName, output)
 	if strings.Contains(output, containerName) {
 		return "ok"
 	}
@@ -49,6 +49,7 @@ func CheckDiskSpace() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
+		log.Printf("Error checking disk space: %v", err)
 		return "error"
 	}
 	return strings.Split(out.String(), "\n")[1]
@@ -89,5 +90,6 @@ func main() {
 
 		c.JSON(http.StatusOK, status)
 	})
+
 	r.Run(":8000")
 }
