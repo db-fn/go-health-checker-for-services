@@ -10,7 +10,7 @@ import (
 )
 
 func CheckServiceStatus(serviceName string) string {
-	cmd := exec.Command("systemctl", "is-active", serviceName)
+	cmd := exec.Command("rc-service", serviceName, "status")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -20,7 +20,7 @@ func CheckServiceStatus(serviceName string) string {
 	}
 	status := strings.TrimSpace(out.String())
 	log.Printf("Service %s, Status: %s", serviceName, status)
-	if status == "active" {
+	if strings.Contains(status, "started") {
 		return "ok"
 	}
 	return "error"
@@ -60,8 +60,8 @@ func main() {
 
 	r.GET("healthcheck", func(c *gin.Context) {
 		services := []string{
-			"docker.service",
-			"github-actions-runner.service",
+			"docker",
+			"github-actions-runner",
 		}
 		containers := []string{
 			"ce0c0dad49d2481ea4b9bde4e7c879b4_postgres128alpine_9414f5",

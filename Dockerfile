@@ -22,8 +22,5 @@ RUN go build -o /healthcheck
 # Открытие порта
 EXPOSE 8000
 
-# Установка PATH
-ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-
 # Команда запуска
 CMD ["/healthcheck"]
