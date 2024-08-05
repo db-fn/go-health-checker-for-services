@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 
 	"bytes"
@@ -18,6 +19,7 @@ func CheckServiceStatus(serviceName string) string {
 		return "error"
 	}
 	status := strings.TrimSpace(out.String())
+	fmt.Println("serviceName: ", serviceName, "\nstatus: ", status)
 	if status == "active" {
 		return "ok"
 	}
@@ -33,6 +35,8 @@ func CheckDockerContainerStatus(containerName string) string {
 		return "error"
 	}
 	output := strings.TrimSpace(out.String())
+	fmt.Println("output: ", output)
+	fmt.Println("containerName: ", containerName)
 	if strings.Contains(output, containerName) {
 		return "ok"
 	}
