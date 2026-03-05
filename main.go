@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -85,6 +87,54 @@ func GetLoadAverage() string {
 	return fmt.Sprintf("%s %s %s", fields[0], fields[1], fields[2])
 }
 
+type RegistryInfo struct {
+	TotalRepos int            `json:"total_repos"`
+	TotalTags  int            `json:"total_tags"`
+	Repos      map[string]int `json:"repos"`
+}
+
+func GetRegistryInfo(registryURL string) RegistryInfo {
+	info := RegistryInfo{Repos: map[string]int{}}
+
+	resp, err := http.Get(registryURL + "/v2/_catalog")
+	if err != nil {
+		log.Printf("Registry catalog error: %v", err)
+		return info
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var catalog struct {
+		Repositories []string `json:"repositories"`
+	}
+	if err := json.Unmarshal(body, &catalog); err != nil {
+		log.Printf("Registry catalog parse error: %v", err)
+		return info
+	}
+
+	info.TotalRepos = len(catalog.Repositories)
+
+	for _, repo := range catalog.Repositories {
+		tagsResp, err := http.Get(fmt.Sprintf("%s/v2/%s/tags/list", registryURL, repo))
+		if err != nil {
+			continue
+		}
+		tagsBody, _ := io.ReadAll(tagsResp.Body)
+		tagsResp.Body.Close()
+
+		var tagsList struct {
+			Tags []string `json:"tags"`
+		}
+		if err := json.Unmarshal(tagsBody, &tagsList); err != nil {
+			continue
+		}
+		info.Repos[repo] = len(tagsList.Tags)
+		info.TotalTags += len(tagsList.Tags)
+	}
+
+	return info
+}
+
 func CheckDockerContainerStatus(containerName string) string {
 	cmd := exec.Command("docker", "ps", "--filter", "name="+containerName, "--filter", "status=running", "--format", "{{.Names}}")
 	var out bytes.Buffer
@@ -136,6 +186,7 @@ func main() {
 			"diskspace":  CheckDiskSpace(),
 			"memory":     GetMemoryInfo(),
 			"load":       GetLoadAverage(),
+			"registry":   GetRegistryInfo("http://registry:5000"),
 		}
 
 		for _, service := range services {
