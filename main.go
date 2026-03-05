@@ -175,6 +175,25 @@ func CheckDiskSpace() string {
 	return strings.Split(out.String(), "\n")[1]
 }
 
+func CountContainersByFilter(nameFilter string) int {
+	if nameFilter == "" {
+		return 0
+	}
+	cmd := exec.Command("docker", "ps", "--filter", "name="+nameFilter, "--format", "{{.Names}}")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return 0
+	}
+	count := 0
+	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+		if strings.TrimSpace(line) != "" {
+			count++
+		}
+	}
+	return count
+}
+
 func splitEnv(key string) []string {
 	val := os.Getenv(key)
 	if val == "" {
@@ -196,6 +215,14 @@ func main() {
 	registryPass := os.Getenv("REGISTRY_PASS")
 	if registryURL == "" {
 		registryURL = "http://registry:5000"
+	}
+
+	previewFilter := os.Getenv("PREVIEW_FILTER")
+	previewContainersPerEnv := 5
+	if v := os.Getenv("PREVIEW_CONTAINERS_PER_ENV"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			previewContainersPerEnv = n
+		}
 	}
 
 	defaultServices := []string{
@@ -222,13 +249,20 @@ func main() {
 		if containers == nil {
 			containers = defaultContainers
 		}
+		totalPreviewContainers := CountContainersByFilter(previewFilter)
+		previewEnvCount := 0
+		if previewFilter != "" && totalPreviewContainers > 0 {
+			previewEnvCount = totalPreviewContainers / previewContainersPerEnv
+		}
+
 		status := map[string]interface{}{
-			"services":   map[string]string{},
-			"containers": map[string]string{},
-			"diskspace":  CheckDiskSpace(),
-			"memory":     GetMemoryInfo(),
-			"load":       GetLoadAverage(),
-			"registry":   GetRegistryInfo(registryURL, registryUser, registryPass),
+			"services":      map[string]string{},
+			"containers":    map[string]string{},
+			"diskspace":     CheckDiskSpace(),
+			"memory":        GetMemoryInfo(),
+			"load":          GetLoadAverage(),
+			"registry":      GetRegistryInfo(registryURL, registryUser, registryPass),
+			"preview_count": previewEnvCount,
 		}
 
 		for _, service := range services {
