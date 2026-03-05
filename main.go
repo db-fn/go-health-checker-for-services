@@ -14,30 +14,16 @@ import (
 )
 
 func CheckServiceStatus(serviceName string) string {
-	cmd := exec.Command("systemctl", "is-active", serviceName)
+	cmd := exec.Command("nsenter", "--target", "1", "--mount", "--", "systemctl", "is-active", serviceName)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
-	if err == nil {
-		status := strings.TrimSpace(out.String())
-		log.Printf("Service %s (systemctl), Status: %s", serviceName, status)
-		if status == "active" {
-			return "ok"
-		}
-		return "error"
-	}
-
-	out.Reset()
-	cmd = exec.Command("rc-service", serviceName, "status")
-	cmd.Stdout = &out
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error checking service status for %s: %v", serviceName, err)
-		return "error"
-	}
 	status := strings.TrimSpace(out.String())
-	log.Printf("Service %s (rc-service), Status: %s", serviceName, status)
-	if strings.Contains(status, "started") {
+	log.Printf("Service %s, Status: %s", serviceName, status)
+	if err != nil && status != "active" {
+		return "error"
+	}
+	if status == "active" {
 		return "ok"
 	}
 	return "error"
@@ -141,14 +127,7 @@ func main() {
 			"gitlab-runner",
 		}
 		containers := []string{
-			"ce0c0dad49d2481ea4b9bde4e7c879b4_postgres128alpine_9414f5",
-			"7466052210e349bb99c2997bf09ba5da_python3914_0e925c",
-			"outline-docker-compose-wk-nginx-1",
-			"outline-docker-compose-wk-outline-1",
-			"outline-docker-compose-wk-minio-1",
-			"outline-docker-compose-wk-oidc-server-1",
-			"outline-docker-compose-wk-redis-1",
-			"outline-docker-compose-wk-postgres-1",
+			"registry",
 			"metabase",
 		}
 		status := map[string]interface{}{
