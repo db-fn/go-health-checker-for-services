@@ -93,10 +93,21 @@ type RegistryInfo struct {
 	Repos      map[string]int `json:"repos"`
 }
 
-func GetRegistryInfo(registryURL string) RegistryInfo {
+func registryGet(url, user, pass string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if user != "" {
+		req.SetBasicAuth(user, pass)
+	}
+	return http.DefaultClient.Do(req)
+}
+
+func GetRegistryInfo(registryURL, user, pass string) RegistryInfo {
 	info := RegistryInfo{Repos: map[string]int{}}
 
-	resp, err := http.Get(registryURL + "/v2/_catalog")
+	resp, err := registryGet(registryURL+"/v2/_catalog", user, pass)
 	if err != nil {
 		log.Printf("Registry catalog error: %v", err)
 		return info
@@ -115,7 +126,7 @@ func GetRegistryInfo(registryURL string) RegistryInfo {
 	info.TotalRepos = len(catalog.Repositories)
 
 	for _, repo := range catalog.Repositories {
-		tagsResp, err := http.Get(fmt.Sprintf("%s/v2/%s/tags/list", registryURL, repo))
+		tagsResp, err := registryGet(fmt.Sprintf("%s/v2/%s/tags/list", registryURL, repo), user, pass)
 		if err != nil {
 			continue
 		}
@@ -165,6 +176,13 @@ func CheckDiskSpace() string {
 }
 
 func main() {
+	registryURL := os.Getenv("REGISTRY_URL")
+	registryUser := os.Getenv("REGISTRY_USER")
+	registryPass := os.Getenv("REGISTRY_PASS")
+	if registryURL == "" {
+		registryURL = "http://registry:5000"
+	}
+
 	r := gin.Default()
 
 	r.GET("healthcheck", func(c *gin.Context) {
@@ -186,7 +204,7 @@ func main() {
 			"diskspace":  CheckDiskSpace(),
 			"memory":     GetMemoryInfo(),
 			"load":       GetLoadAverage(),
-			"registry":   GetRegistryInfo("http://registry:5000"),
+			"registry":   GetRegistryInfo(registryURL, registryUser, registryPass),
 		}
 
 		for _, service := range services {
