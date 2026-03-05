@@ -175,6 +175,21 @@ func CheckDiskSpace() string {
 	return strings.Split(out.String(), "\n")[1]
 }
 
+func splitEnv(key string) []string {
+	val := os.Getenv(key)
+	if val == "" {
+		return nil
+	}
+	var result []string
+	for _, s := range strings.Split(val, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
 func main() {
 	registryURL := os.Getenv("REGISTRY_URL")
 	registryUser := os.Getenv("REGISTRY_USER")
@@ -183,20 +198,29 @@ func main() {
 		registryURL = "http://registry:5000"
 	}
 
+	defaultServices := []string{
+		"docker",
+		"github-actions-runner",
+		"github-actions-runner-2",
+		"github-actions-runner-3",
+		"github-actions-runner-4",
+		"gitlab-runner",
+	}
+	defaultContainers := []string{
+		"registry",
+		"metabase",
+	}
+
 	r := gin.Default()
 
 	r.GET("healthcheck", func(c *gin.Context) {
-		services := []string{
-			"docker",
-			"github-actions-runner",
-			"github-actions-runner-2",
-			"github-actions-runner-3",
-			"github-actions-runner-4",
-			"gitlab-runner",
+		services := splitEnv("SERVICES")
+		if services == nil {
+			services = defaultServices
 		}
-		containers := []string{
-			"registry",
-			"metabase",
+		containers := splitEnv("CONTAINERS")
+		if containers == nil {
+			containers = defaultContainers
 		}
 		status := map[string]interface{}{
 			"services":   map[string]string{},
